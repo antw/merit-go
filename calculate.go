@@ -52,13 +52,14 @@ func calculateFrame(frame int, order Order) {
 
 		if maxLoad < remaining {
 			producer.SetLoadAt(frame, maxLoad)
-		} else if remaining > 0 {
-			producer.SetLoadAt(frame, remaining)
+		} else {
+			// remaining is less than 0 if always-on supply exceeds demand.
+			if remaining > 0 {
+				producer.SetLoadAt(frame, remaining)
+			}
+
 			order.PriceSetters[frame] = producer
 			break // All demand is assigned.
-		} else {
-			order.PriceSetters[frame] = producer
-			break // All demand is assigned. TODO Can we ever get here?
 		}
 
 		remaining -= maxLoad
