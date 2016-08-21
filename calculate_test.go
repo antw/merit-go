@@ -43,6 +43,44 @@ func TestCalculateOneDispatchable(t *testing.T) {
 	}
 }
 
+// Asserts that the cheaper dispatchable is used first.
+func TestCalculateTwoDispatchables(t *testing.T) {
+	d1 := Dispatchable{Cost: 2.0, Capacity: 0.5, Units: 2.0}
+	d2 := Dispatchable{Cost: 1.0, Capacity: 0.5, Units: 2.0}
+
+	cons := Consumer{Profile: [8760]float64{0.2, 0.4, 0.8}, TotalDemand: 2.0}
+
+	order := Order{
+		Consumers:     []*Consumer{&cons},
+		Dispatchables: DispatchableList{&d1, &d2},
+	}
+
+	Calculate(order)
+
+	tests := []struct {
+		frame int
+		want1 float64
+		want2 float64
+	}{
+		{0, 0.0, 0.4},
+		{1, 0.0, 0.8},
+		{2, 0.6, 1.0},
+		{3, 0.0, 0.0},
+	}
+
+	for _, test := range tests {
+		if load := d1.LoadAt(test.frame); toFixed(load, 10) != test.want1 {
+			t.Errorf("Calculate assigned dispatchable1 load %f, want %f",
+				load, test.want1)
+		}
+
+		if load := d2.LoadAt(test.frame); toFixed(load, 10) != test.want2 {
+			t.Errorf("Calculate assigned dispatchable2 load %f, want %f",
+				load, test.want2)
+		}
+	}
+}
+
 func TestCalculateOneAOOneDisp(t *testing.T) {
 	ao := AlwaysOn{Profile: [8760]float64{0.5, 0.5, 0.5}, TotalProduction: 1.0}
 	disp := Dispatchable{Key: "only", Capacity: 0.5, Units: 3.0}
