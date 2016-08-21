@@ -2,6 +2,7 @@ package merit
 
 import (
 	"math"
+	"math/rand"
 	"testing"
 )
 
@@ -117,21 +118,32 @@ func TestCalculateOneAOOneDisp(t *testing.T) {
 }
 
 func BenchmarkCalculate(b *testing.B) {
-	ao := AlwaysOn{Profile: [8760]float64{0.5, 0.5, 0.5}, TotalProduction: 1.0}
+	b.StopTimer()
 
-	d1 := Dispatchable{Capacity: 0.5, Units: 3.0}
-	d2 := Dispatchable{Capacity: 0.5, Units: 3.0}
-	d3 := Dispatchable{Capacity: 0.5, Units: 3.0}
-	d4 := Dispatchable{Capacity: 0.5, Units: 3.0}
+	var demand [8760]float64
+	var always [8760]float64
 
-	cons := Consumer{Profile: [8760]float64{0.2, 0.4, 1.0}, TotalDemand: 8.0}
+	// Using a predefined seed for predictable results.
+	rand.Seed(10)
 
-	order := Order{
-		Consumers:     []*Consumer{&cons},
-		AlwaysOns:     []*AlwaysOn{&ao},
-		Dispatchables: DispatchableList{&d1, &d2, &d3, &d4},
-		PriceSetters:  make([]*Dispatchable, 8760),
+	for i := 0; i < 8760; i++ {
+		demand[i] = rand.Float64()
+		always[i] = rand.Float64()
 	}
+
+	ao := AlwaysOn{Profile: always, TotalProduction: 1.0}
+	cons := Consumer{Profile: demand, TotalDemand: 100.0}
+
+	order := NewOrder()
+
+	order.AddConsumer(&cons)
+	order.AddAlwaysOn(&ao)
+
+	for i := 0; i < 4; i++ {
+		order.AddDispatchable(&Dispatchable{Capacity: 0.5, Units: 3.0})
+	}
+
+	b.StartTimer()
 
 	for i := 0; i < b.N; i++ {
 		Calculate(order)
