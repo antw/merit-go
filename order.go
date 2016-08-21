@@ -2,8 +2,8 @@ package merit
 
 // Order contains information about the participants in the merit order.
 type Order struct {
-	Consumers     []Consumer
-	AlwaysOns     []AlwaysOn
+	Consumers     []*Consumer
+	AlwaysOns     []*AlwaysOn
 	Dispatchables DispatchableList
 }
 

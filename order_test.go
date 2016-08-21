@@ -13,7 +13,7 @@ var consumerTwo = Consumer{
 }
 
 func TestOrderDemandAt(t *testing.T) {
-	order := Order{Consumers: []Consumer{consumerOne, consumerTwo}}
+	order := Order{Consumers: []*Consumer{&consumerOne, &consumerTwo}}
 
 	tests := []struct {
 		frame int
