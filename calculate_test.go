@@ -4,6 +4,7 @@ import (
 	"math"
 	"math/rand"
 	"testing"
+	"time"
 )
 
 func round(num float64) int {
@@ -87,6 +88,52 @@ func TestCalculateTwoDispatchables(t *testing.T) {
 	}
 }
 
+// Asserts that the concurrent calculator assigns a load in every frame.
+func TestCalculateParallel(t *testing.T) {
+	seed := time.Now().UTC().UnixNano()
+	t.Logf("Random seed: %d", seed)
+	rand.Seed(seed)
+
+	var consumption [8760]float64
+
+	for i := 0; i < 8760; i++ {
+		consumption[i] = rand.Float64() + 0.1
+	}
+
+	makeOrder := func() Order {
+		disp := Dispatchable{Capacity: 0.5, Units: 3.0}
+		cons := Consumer{Profile: consumption, TotalDemand: 2.0}
+
+		order := NewOrder()
+		order.AddConsumer(&cons)
+		order.AddDispatchable(&disp)
+
+		return order
+	}
+
+	serial := makeOrder()
+	parallel := makeOrder()
+
+	Calculate(serial)
+	CalculateParallel(parallel, 4)
+
+	sDisp := serial.Dispatchables[0]
+	pDisp := parallel.Dispatchables[0]
+
+	for i := 0; i < 8760; i++ {
+		pLoad := pDisp.LoadAt(i)
+
+		if pLoad == 0 {
+			t.Errorf("Parallel dispatchable load zero in frame %d", i)
+		}
+
+		if sLoad := sDisp.LoadAt(i); pLoad != sLoad {
+			t.Errorf("Parallel dispatchable load in frame %d = %f, want %f",
+				i, pLoad, sLoad)
+		}
+	}
+}
+
 func TestCalculateOneAOOneDisp(t *testing.T) {
 	ao := AlwaysOn{Profile: [8760]float64{0.5, 0.5, 0.5}, TotalProduction: 1.0}
 	disp := Dispatchable{Key: "only", Capacity: 0.5, Units: 3.0}
@@ -117,14 +164,10 @@ func TestCalculateOneAOOneDisp(t *testing.T) {
 	}
 }
 
-func BenchmarkCalculate(b *testing.B) {
-	b.StopTimer()
-
+// Creates a merit order for use in benchmarking with n dispatchables.
+func benchmarkOrder(n int) Order {
 	var demand [8760]float64
 	var always [8760]float64
-
-	// Using a predefined seed for predictable results.
-	rand.Seed(10)
 
 	for i := 0; i < 8760; i++ {
 		demand[i] = rand.Float64()
@@ -132,20 +175,44 @@ func BenchmarkCalculate(b *testing.B) {
 	}
 
 	ao := AlwaysOn{Profile: always, TotalProduction: 1.0}
-	cons := Consumer{Profile: demand, TotalDemand: 100.0}
+	cons := Consumer{Profile: demand, TotalDemand: 25.0 * float64(n)}
 
 	order := NewOrder()
 
 	order.AddConsumer(&cons)
 	order.AddAlwaysOn(&ao)
 
-	for i := 0; i < 4; i++ {
+	for i := 0; i < n; i++ {
 		order.AddDispatchable(&Dispatchable{Capacity: 0.5, Units: 3.0})
 	}
+
+	return order
+}
+
+func BenchmarkCalculate(b *testing.B) {
+	b.StopTimer()
+
+	// Using a predefined seed for predictable results.
+	rand.Seed(10)
+	order := benchmarkOrder(4)
 
 	b.StartTimer()
 
 	for i := 0; i < b.N; i++ {
 		Calculate(order)
+	}
+}
+
+func BenchmarkCalculateParallel(b *testing.B) {
+	b.StopTimer()
+
+	// Using a predefined seed for predictable results.
+	rand.Seed(10)
+	order := benchmarkOrder(4)
+
+	b.StartTimer()
+
+	for i := 0; i < b.N; i++ {
+		CalculateParallel(order, 4)
 	}
 }

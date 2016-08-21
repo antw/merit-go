@@ -1,6 +1,9 @@
 package merit
 
-import "sort"
+import (
+	"sort"
+	"sync"
+)
 
 // Calculate receives a merit order and computes which producers are running in
 // each frame, and at what level of production, in order to meet demand.
@@ -8,6 +11,31 @@ func Calculate(order Order) {
 	sort.Sort(order.Dispatchables)
 
 	for frame := 0; frame < 8760; frame++ {
+		calculateFrame(frame, order)
+	}
+}
+
+// CalculateParallel receives a merit order and computes the batches of frames
+// in goroutines. Not suitable for merit orders which use electricity storage.
+func CalculateParallel(order Order, batches int) {
+	var wg sync.WaitGroup
+
+	batchSize := 8760 / batches
+
+	for i := 0; i < batches; i++ {
+		wg.Add(1)
+
+		go func(i int) {
+			calculateFrameBatch(batchSize*i, (batchSize * (i + 1)), order)
+			wg.Done()
+		}(i)
+	}
+
+	wg.Wait()
+}
+
+func calculateFrameBatch(start, end int, order Order) {
+	for frame := start; frame < end; frame++ {
 		calculateFrame(frame, order)
 	}
 }
