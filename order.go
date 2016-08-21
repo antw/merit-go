@@ -4,7 +4,7 @@ package merit
 type Order struct {
 	Consumers     []Consumer
 	AlwaysOns     []AlwaysOn
-	Dispatchables []Dispatchable
+	Dispatchables DispatchableList
 }
 
 // DemandAt returns the total demand for energy in frame.

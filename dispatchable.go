@@ -38,3 +38,19 @@ func (d *Dispatchable) SetLoadAt(frame int, amount float64) error {
 func (d *Dispatchable) LoadAt(frame int) float64 {
 	return d.load[frame]
 }
+
+// DispatchableList is a list of Dispatchable producers sorted by their cost.
+// Implements sort.Interface.
+type DispatchableList []*Dispatchable
+
+func (dl DispatchableList) Len() int {
+	return len(dl)
+}
+
+func (dl DispatchableList) Swap(i, j int) {
+	dl[i], dl[j] = dl[j], dl[i]
+}
+
+func (dl DispatchableList) Less(i, j int) bool {
+	return dl[i].Cost < dl[j].Cost
+}
