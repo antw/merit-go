@@ -18,11 +18,9 @@ func TestCalculateOneDispatchable(t *testing.T) {
 	disp := Dispatchable{Capacity: 0.5, Units: 3.0}
 	cons := Consumer{Profile: [8760]float64{0.2, 0.4, 1.0}, TotalDemand: 2.0}
 
-	order := Order{
-		Consumers:     []*Consumer{&cons},
-		Dispatchables: DispatchableList{&disp},
-		PriceSetters:  make([]*Dispatchable, 8760),
-	}
+	order := NewOrder()
+	order.AddConsumer(&cons)
+	order.AddDispatchable(&disp)
 
 	Calculate(order)
 
@@ -51,11 +49,10 @@ func TestCalculateTwoDispatchables(t *testing.T) {
 
 	cons := Consumer{Profile: [8760]float64{0.2, 0.4, 0.8}, TotalDemand: 2.0}
 
-	order := Order{
-		Consumers:     []*Consumer{&cons},
-		Dispatchables: DispatchableList{&d1, &d2},
-		PriceSetters:  make([]*Dispatchable, 8760),
-	}
+	order := NewOrder()
+	order.AddConsumer(&cons)
+	order.AddDispatchable(&d1)
+	order.AddDispatchable(&d2)
 
 	Calculate(order)
 
@@ -94,12 +91,10 @@ func TestCalculateOneAOOneDisp(t *testing.T) {
 	disp := Dispatchable{Key: "only", Capacity: 0.5, Units: 3.0}
 	cons := Consumer{Profile: [8760]float64{0.2, 0.4, 1.0}, TotalDemand: 2.0}
 
-	order := Order{
-		Consumers:     []*Consumer{&cons},
-		AlwaysOns:     []*AlwaysOn{&ao},
-		Dispatchables: DispatchableList{&disp},
-		PriceSetters:  make([]*Dispatchable, 8760),
-	}
+	order := NewOrder()
+	order.AddConsumer(&cons)
+	order.AddAlwaysOn(&ao)
+	order.AddDispatchable(&disp)
 
 	Calculate(order)
 
