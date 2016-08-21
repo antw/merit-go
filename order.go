@@ -5,6 +5,7 @@ type Order struct {
 	Consumers     []*Consumer
 	AlwaysOns     []*AlwaysOn
 	Dispatchables DispatchableList
+	PriceSetters  []*Dispatchable
 }
 
 // DemandAt returns the total demand for energy in frame.

@@ -26,8 +26,10 @@ func calculateFrame(frame int, order Order) {
 			producer.SetLoadAt(frame, maxLoad)
 		} else if remaining > 0 {
 			producer.SetLoadAt(frame, remaining)
+			order.PriceSetters[frame] = producer
 			break // All demand is assigned.
 		} else {
+			order.PriceSetters[frame] = producer
 			break // All demand is assigned. TODO Can we ever get here?
 		}
 

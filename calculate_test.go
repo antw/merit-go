@@ -21,6 +21,7 @@ func TestCalculateOneDispatchable(t *testing.T) {
 	order := Order{
 		Consumers:     []*Consumer{&cons},
 		Dispatchables: DispatchableList{&disp},
+		PriceSetters:  make([]*Dispatchable, 8760),
 	}
 
 	Calculate(order)
@@ -53,19 +54,21 @@ func TestCalculateTwoDispatchables(t *testing.T) {
 	order := Order{
 		Consumers:     []*Consumer{&cons},
 		Dispatchables: DispatchableList{&d1, &d2},
+		PriceSetters:  make([]*Dispatchable, 8760),
 	}
 
 	Calculate(order)
 
 	tests := []struct {
-		frame int
-		want1 float64
-		want2 float64
+		frame  int
+		want1  float64
+		want2  float64
+		wantPS *Dispatchable
 	}{
-		{0, 0.0, 0.4},
-		{1, 0.0, 0.8},
-		{2, 0.6, 1.0},
-		{3, 0.0, 0.0},
+		{0, 0.0, 0.4, &d2},
+		{1, 0.0, 0.8, &d2},
+		{2, 0.6, 1.0, &d1},
+		{3, 0.0, 0.0, &d2},
 	}
 
 	for _, test := range tests {
@@ -77,6 +80,11 @@ func TestCalculateTwoDispatchables(t *testing.T) {
 		if load := d2.LoadAt(test.frame); toFixed(load, 10) != test.want2 {
 			t.Errorf("Calculate assigned dispatchable2 load %f, want %f",
 				load, test.want2)
+		}
+
+		if setter := order.PriceSetters[test.frame]; setter != test.wantPS {
+			t.Errorf("Calculate assigned price setter in frame %d = %f, want %f",
+				test.frame, setter.Cost, test.wantPS.Cost)
 		}
 	}
 }
@@ -90,6 +98,7 @@ func TestCalculateOneAOOneDisp(t *testing.T) {
 		Consumers:     []*Consumer{&cons},
 		AlwaysOns:     []*AlwaysOn{&ao},
 		Dispatchables: DispatchableList{&disp},
+		PriceSetters:  make([]*Dispatchable, 8760),
 	}
 
 	Calculate(order)
@@ -126,6 +135,7 @@ func BenchmarkCalculate(b *testing.B) {
 		Consumers:     []*Consumer{&cons},
 		AlwaysOns:     []*AlwaysOn{&ao},
 		Dispatchables: DispatchableList{&d1, &d2, &d3, &d4},
+		PriceSetters:  make([]*Dispatchable, 8760),
 	}
 
 	for i := 0; i < b.N; i++ {
