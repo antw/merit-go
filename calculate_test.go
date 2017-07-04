@@ -175,7 +175,7 @@ func benchmarkOrder(n int) Order {
 	}
 
 	ao := AlwaysOn{Profile: always, TotalProduction: 1.0}
-	cons := Consumer{Profile: demand, TotalDemand: 25.0 * float64(n)}
+	cons := Consumer{Profile: demand, TotalDemand: 1.5 * float64(n)}
 
 	order := NewOrder()
 
@@ -194,7 +194,7 @@ func BenchmarkCalculate(b *testing.B) {
 
 	// Using a predefined seed for predictable results.
 	rand.Seed(10)
-	order := benchmarkOrder(4)
+	order := benchmarkOrder(40)
 
 	b.StartTimer()
 
@@ -208,7 +208,7 @@ func BenchmarkCalculateParallel(b *testing.B) {
 
 	// Using a predefined seed for predictable results.
 	rand.Seed(10)
-	order := benchmarkOrder(4)
+	order := benchmarkOrder(40)
 
 	b.StartTimer()
 
