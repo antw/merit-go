@@ -27,10 +27,7 @@ func NewReserve(volume float64, decay decayFunc) reserve {
 }
 
 func NewReserveWithoutDecay(volume float64) reserve {
-	return NewReserve(
-		volume,
-		func(int, float64) float64 { return 0.0 },
-	)
+	return NewReserve(volume, nil)
 }
 
 // At returns how much energy is stored in the reserve at the end of the given
@@ -91,7 +88,7 @@ func (r *reserve) Take(frame int, amount float64) float64 {
 	stored := r.At(frame)
 
 	if stored > amount {
-		r.Set(frame, r.At(frame)-amount)
+		r.Set(frame, stored-amount)
 		return amount
 	}
 
@@ -102,7 +99,7 @@ func (r *reserve) Take(frame int, amount float64) float64 {
 // DecayAt returns how much energy decayed in the reserve at the beginning of
 // the chosen frame.
 func (r *reserve) DecayAt(frame int) float64 {
-	if frame == 0 {
+	if r.decay == nil || frame == 0 {
 		return 0.0
 	}
 
