@@ -1,6 +1,9 @@
 package merit
 
-import "testing"
+import (
+	"sync"
+	"testing"
+)
 
 func testDecay(t *testing.T, res *reserve, frame int, expected float64) {
 	if res.DecayAt(frame) != expected {
@@ -185,5 +188,127 @@ func TestVolumeLimit(t *testing.T) {
 		}
 
 		testAt(t, &res, 0, test.stored)
+	}
+}
+
+func BenchmarkReserveAdd(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+		res := NewReserveWithoutDecay(8760.0)
+		res.Set(0, 0)
+		b.StartTimer()
+
+		for frame := 0; frame < 8760; frame++ {
+			res.Add(frame, 1.0)
+		}
+	}
+}
+
+func BenchmarkReserveTake(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+		res := NewReserveWithoutDecay(8760.0)
+		res.Set(0, 8760.0)
+		b.StartTimer()
+
+		for frame := 0; frame < 8760; frame++ {
+			res.Take(frame, 1.0)
+		}
+	}
+}
+
+func BenchmarkReserveNilDecay(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+		res := NewReserveWithoutDecay(20000.0)
+		res.Set(0, 20000.0)
+		b.StartTimer()
+
+		for frame := 0; frame < 8760; frame++ {
+			res.At(frame)
+			res.At(frame)
+			res.At(frame)
+		}
+	}
+}
+
+func TestReserveNilDecay(t *testing.T) {
+	res := NewReserveWithoutDecay(20000.0)
+	res.Set(0, 20000.0)
+
+	for frame := 0; frame < 10; frame++ {
+		res.At(frame)
+		res.At(frame)
+		res.At(frame)
+	}
+}
+
+func BenchmarkReserveDecay(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+		res := NewReserve(
+			20000.0,
+			func(frame int, stored float64) float64 { return 2.0 },
+		)
+
+		res.Set(0, 20000.0)
+		b.StartTimer()
+
+		for frame := 0; frame < 8760; frame++ {
+			res.At(frame)
+		}
+	}
+}
+
+func BenchmarkReserve(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+		res := NewReserve(
+			10.0,
+			func(frame int, stored float64) float64 { return 2.0 },
+		)
+		res.Set(0, 5.0)
+		b.StartTimer()
+
+		for frame := 0; frame < 8760; frame++ {
+			res.Add(frame, 1.0)
+			res.Take(frame, 1.0)
+			res.At(frame)
+		}
+	}
+}
+
+func BenchmarkReserveParallel(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+
+		b.StopTimer()
+		res := NewReserve(
+			10.0,
+			func(frame int, stored float64) float64 { return 2.0 },
+		)
+		res.Set(0, 5.0)
+		b.StartTimer()
+
+		var wg sync.WaitGroup
+
+		batchSize := 8760 / 4
+
+		for i := 0; i < 4; i++ {
+			wg.Add(1)
+
+			start := batchSize * i
+			end := batchSize * (i + 1)
+
+			go func(i int) {
+				for frame := start; frame < end; frame++ {
+					res.Add(frame, 1.0)
+					res.Take(frame, 1.0)
+					res.At(frame)
+				}
+				wg.Done()
+			}(i)
+		}
+
+		wg.Wait()
 	}
 }

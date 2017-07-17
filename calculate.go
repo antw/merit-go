@@ -44,7 +44,58 @@ func calculateFrame(frame int, order Order) {
 	remaining := order.DemandAt(frame)
 
 	for _, producer := range order.AlwaysOns {
-		remaining -= producer.LoadAt(frame)
+		produced := producer.LoadAt(frame)
+
+		if produced > remaining {
+			produced -= remaining
+			remaining = 0
+
+			if produced > 0 {
+				for _, flex := range order.Flexibles {
+					produced -= flex.AssignExcessAt(frame, produced)
+
+					// If there is no energy remaining to be assigned, we can exit
+					// early and - as an added bonus - prevent assigning tiny
+					// negatives resulting from floating point errors. This would
+					// otherwise mess up technologies which have a Reserve whose
+					// volume is 0.0.
+					if produced <= 0.0 {
+						break
+					}
+				}
+			}
+		} else if produced < remaining {
+			// The producer is providing less energy than remaining demand. Take
+			// it all and continue with the next producer.
+			remaining -= produced
+		}
+
+		if remaining < 0 {
+			remaining = 0
+		}
+	}
+
+	for _, producer := range order.Flexibles {
+		maxLoad := producer.AvailableAt(frame)
+
+		if remaining > 0 && maxLoad < remaining {
+			producer.SetLoadAt(frame, maxLoad)
+		} else {
+			// remaining is less than 0 if always-on supply exceeds demand.
+			if remaining > 0 {
+				producer.SetLoadAt(frame, remaining)
+			}
+
+			if len(order.Dispatchables) > 0 {
+				// TODO Add a test! Panics without the above conditional when
+				// there are no dispatchables.
+				order.PriceSetters[frame] = order.Dispatchables[0]
+			}
+
+			break // All demand is assigned.
+		}
+
+		remaining -= maxLoad
 	}
 
 	for _, producer := range order.Dispatchables {

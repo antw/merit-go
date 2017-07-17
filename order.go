@@ -5,6 +5,7 @@ type Order struct {
 	Consumers     []*Consumer
 	AlwaysOns     []*AlwaysOn
 	Dispatchables DispatchableList
+	Flexibles     []Flexlike
 	PriceSetters  []*Dispatchable
 }
 
@@ -38,4 +39,20 @@ func (o *Order) AddAlwaysOn(a *AlwaysOn) {
 // AddDispatchable adds a Dispatchable producer to the merit order.
 func (o *Order) AddDispatchable(d *Dispatchable) {
 	o.Dispatchables = append(o.Dispatchables, d)
+}
+
+// AddFlex adds a Flex participant to the merit order.
+func (o *Order) AddFlex(f *Flex) {
+	// if fl, ok := f.(*Flexlike); ok {
+	// 	o.Flexibles = append(o.Flexibles, fl)
+	// }
+
+	// o.Flexibles = append(o.Flexibles, (Flexlike)(*f))
+	// o.Flexibles = append(o.Flexibles, f.(*Flexlike))
+	o.Flexibles = append(o.Flexibles, f)
+}
+
+// AddStorage adds a Flex participant to the merit order.
+func (o *Order) AddStorage(s *Storage) {
+	o.Flexibles = append(o.Flexibles, s)
 }

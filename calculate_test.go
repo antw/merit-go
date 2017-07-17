@@ -164,6 +164,43 @@ func TestCalculateOneAOOneDisp(t *testing.T) {
 	}
 }
 
+func TestCalculateOneStorage(t *testing.T) {
+	st := Storage{
+		Flex: Flex{
+			Key:      "store",
+			Capacity: 2.0,
+			Units:    1.0,
+		},
+		reserve: NewReserveWithoutDecay(5.0),
+	}
+
+	ao := AlwaysOn{Profile: [8760]float64{1.0, 1.0, 1.0, 1.0}, TotalProduction: 1.0}
+	disp := Dispatchable{Key: "only", Capacity: 0.5, Units: 1.0}
+	cons := Consumer{Profile: [8760]float64{1.5, 1.0, 0.5, 2.0}, TotalDemand: 1.0}
+
+	order := NewOrder()
+	order.AddAlwaysOn(&ao)
+	order.AddStorage(&st)
+	order.AddDispatchable(&disp)
+	order.AddConsumer(&cons)
+
+	Calculate(order)
+
+	loads := []float64{
+		0.0,  // all ao + disp used
+		0.0,  // all ao used
+		-0.5, // 0.5 ao used, 0.5 excess
+		0.5,  // 0.5 deficit
+	}
+
+	for frame, expected := range loads {
+		if actual := st.LoadAt(frame); actual != expected {
+			t.Errorf("Calculate assigned storage load %d = %f, want %f",
+				frame, actual, expected)
+		}
+	}
+}
+
 // Creates a merit order for use in benchmarking with n dispatchables.
 func benchmarkOrder(n int) Order {
 	var demand [8760]float64
@@ -174,7 +211,7 @@ func benchmarkOrder(n int) Order {
 		always[i] = rand.Float64()
 	}
 
-	ao := AlwaysOn{Profile: always, TotalProduction: 1.0}
+	ao := AlwaysOn{Profile: always, TotalProduction: 10.0}
 	cons := Consumer{Profile: demand, TotalDemand: 1.5 * float64(n)}
 
 	order := NewOrder()
@@ -183,36 +220,76 @@ func benchmarkOrder(n int) Order {
 	order.AddAlwaysOn(&ao)
 
 	for i := 0; i < n; i++ {
-		order.AddDispatchable(&Dispatchable{Capacity: 0.5, Units: 3.0})
+		order.AddDispatchable(&Dispatchable{Capacity: 1.0, Units: 1})
 	}
 
 	return order
 }
 
 func BenchmarkCalculate(b *testing.B) {
-	b.StopTimer()
-
-	// Using a predefined seed for predictable results.
-	rand.Seed(10)
-	order := benchmarkOrder(40)
-
-	b.StartTimer()
-
 	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+
+		rand.Seed(10)
+		order := benchmarkOrder(40)
+
+		b.StartTimer()
+
 		Calculate(order)
 	}
 }
 
 func BenchmarkCalculateParallel(b *testing.B) {
-	b.StopTimer()
-
-	// Using a predefined seed for predictable results.
-	rand.Seed(10)
-	order := benchmarkOrder(40)
-
-	b.StartTimer()
-
 	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+
+		rand.Seed(10)
+		order := benchmarkOrder(40)
+
+		b.StartTimer()
+
+		CalculateParallel(order, 4)
+	}
+}
+
+func BenchmarkCalculateWithFlex(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		rand.Seed(10)
+		order := benchmarkOrder(40)
+
+		for i := 0; i < 400; i++ {
+			order.AddStorage(&Storage{
+				Flex: Flex{
+					Capacity: 5.0,
+					Units:    1.0,
+				},
+				reserve: NewReserveWithoutDecay(10.0),
+			})
+		}
+
+		Calculate(order)
+	}
+}
+
+func BenchmarkCalculateParallelWithFlex(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+
+		rand.Seed(10)
+		order := benchmarkOrder(40)
+
+		for i := 0; i < 40; i++ {
+			order.AddStorage(&Storage{
+				Flex: Flex{
+					Capacity: 5.0,
+					Units:    1.0,
+				},
+				reserve: NewReserveWithoutDecay(10.0),
+			})
+		}
+
+		b.StartTimer()
+
 		CalculateParallel(order, 4)
 	}
 }
